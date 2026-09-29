@@ -1,2 +1,6 @@
-# P1_PBDI
-Repositório dedicado a postagem da avaliação 1 de PBDI, 29/09/2026
+# Prova - Data Warehouse com PostgreSQL
+
+## Integrantes
+Willian Aparecido Domingos - RA 2041382521018
+Thais Mauro Franco - RA 2041382521032
+Filipe Henrique Silva Cerqueira - RA 2041382521022
