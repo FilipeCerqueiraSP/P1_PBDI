@@ -33,3 +33,20 @@ transaction_date TEXT
 SELECT * FROM raw.cafe_sales;
 SELECT COUNT(*) FROM raw.cafe_sales;
 SELECT * FROM raw.cafe_sales LIMIT 3;
+
+-- 4 ----------
+-- Para cada uma das colunas item, payment_method e location da camada raw, escreva uma
+-- consulta que liste cada valor distinto e a quantidade de linhas em que ele aparece, da maior
+-- para a menor quantidade. Os valores NULL também devem aparecer.
+
+SELECT DISTINCT item,  payment_method, location, COUNT(*) AS Qtd_linhas
+FROM raw.cafe_sales
+GROUP BY item, payment_method, location
+ORDER BY Qtd_linhas DESC;
+
+-- 5 ---------
+-- Escreva uma única consulta, usando UNION ALL, que devolva uma linha para cada coluna
+-- da camada raw, exceto transaction_id, com quatro colunas: coluna (o nome da coluna,
+-- como texto), qtd_error, qtd_unknown e qtd_vazio (valor NULL ou texto vazio após TRIM).
+-- O resultado terá sete linhas.
+
