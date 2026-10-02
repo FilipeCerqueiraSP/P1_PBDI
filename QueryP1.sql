@@ -50,3 +50,53 @@ ORDER BY Qtd_linhas DESC;
 -- como texto), qtd_error, qtd_unknown e qtd_vazio (valor NULL ou texto vazio após TRIM).
 -- O resultado terá sete linhas.
 
+SELECT 'item' AS coluna,
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE item IS NULL) AS qtd_vazio,
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(item)) = 'UNKNOWN') AS qtd_unknown,
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(item)) = 'ERROR') AS qtd_error
+ 
+UNION ALL
+SELECT 'quantity',
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE quantity IS NULL),
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(quantity)) = 'UNKNOWN'),
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(quantity)) = 'ERROR')
+ 
+UNION ALL
+SELECT 'price_per_unit',
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE price_per_unit IS NULL),
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(price_per_unit)) = 'UNKNOWN'),
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(price_per_unit)) = 'ERROR')
+ 
+UNION ALL
+SELECT 'total_spent',
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE total_spent IS NULL),
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(total_spent)) = 'UNKNOWN'),
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(total_spent)) = 'ERROR')
+ 
+UNION ALL
+SELECT 'payment_method',
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE payment_method IS NULL),
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(payment_method)) = 'UNKNOWN'),
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(payment_method)) = 'ERROR')
+ 
+UNION ALL
+SELECT 'location',
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE location IS NULL),
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(location)) = 'UNKNOWN'),
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(location)) = 'ERROR')
+ 
+UNION ALL
+SELECT 'transaction_date',
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE transaction_date IS NULL),
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(transaction_date)) = 'UNKNOWN'),
+  (SELECT COUNT(*) FROM raw.cafe_sales WHERE UPPER(TRIM(transaction_date)) = 'ERROR');
+ 
+
+-- 6 --------
+-- com um único INSERT ... SELECT, precedido de TRUNCATE. Em todas as colunas, aplique
+-- TRIM e transforme '', 'ERROR' e 'UNKNOWN' em NULL antes de qualquer conversão; converta
+-- as colunas numéricas com CAST e a data com TO_DATE no formato 'YYYY-MM-DD'. Em seguida,
+-- escreva uma consulta que conte os NULL de cada coluna da tabela tipada. Para cada coluna,
+-- o total deve ser igual à soma qtd_error + qtd_unknown + qtd_vazio obtida no Enunciado
+-- 5.
+
