@@ -100,3 +100,89 @@ SELECT 'transaction_date',
 -- o total deve ser igual à soma qtd_error + qtd_unknown + qtd_vazio obtida no Enunciado
 -- 5.
 
+
+
+DROP TABLE IF EXISTS staging.cafe_tipada CASCADE;
+CREATE TABLE staging.cafe_tipada (
+transaction_id VARCHAR(20) PRIMARY KEY,
+item VARCHAR(20),
+quantity INTEGER,
+price_per_unit NUMERIC(6,2),
+total_spent NUMERIC(8,2),
+payment_method VARCHAR(20),
+location VARCHAR(20),
+transaction_date DATE
+ );
+ 
+
+TRUNCATE TABLE staging.cafe_tipada;
+INSERT INTO staging.cafe_tipada(
+transaction_id,
+item,
+quantity,
+price_per_unit,
+total_spent,
+payment_method,
+location,
+transaction_date)
+SELECT
+    UPPER(TRIM(transaction_id)),
+    CASE
+        WHEN UPPER(TRIM(item)) IN ('', 'ERROR', 'UNKNOWN')
+        THEN NULL ELSE UPPER(TRIM(item))
+    END,
+    CASE
+        WHEN UPPER(TRIM(quantity)) IN ('', 'ERROR', 'UNKNOWN')
+        THEN NULL 
+        ELSE CAST(TRIM(quantity) AS INTEGER)
+    END,
+    CASE
+        WHEN UPPER(TRIM(price_per_unit)) IN ('', 'ERROR', 'UNKNOWN')
+        THEN NULL 
+        ELSE CAST(TRIM(price_per_unit) AS NUMERIC(6,2))
+    END,
+    CASE
+        WHEN UPPER(TRIM(total_spent)) IN ('', 'ERROR', 'UNKNOWN')
+        THEN NULL 
+        ELSE CAST(TRIM(total_spent) AS NUMERIC(8,2))
+    END,
+    CASE
+        WHEN UPPER(TRIM(payment_method)) IN ('', 'ERROR', 'UNKNOWN')
+        THEN NULL 
+        ELSE UPPER(TRIM(payment_method))
+    END,
+    CASE
+        WHEN UPPER(TRIM(location)) IN ('', 'ERROR', 'UNKNOWN')
+        THEN NULL 
+        ELSE UPPER(TRIM(location))
+    END,
+    CASE
+        WHEN UPPER(TRIM(transaction_date)) IN ('', 'ERROR', 'UNKNOWN')
+        THEN NULL 
+        ELSE TO_DATE(TRIM(transaction_date), 'YYYY-MM-DD')
+    END
+FROM raw.cafe_sales
+WHERE TRIM(transaction_id) NOT IN ('', 'ERROR', 'UNKNOWN')
+  AND transaction_id IS NOT NULL;
+ 
+ 
+-- CONTANDO VALORES NULOS
+SELECT 
+    COUNT(CASE WHEN transaction_id IS NULL THEN 1 END) 
+    AS transaction_id_null,
+    COUNT(CASE WHEN item IS NULL THEN 1 END)
+    AS item_null,
+    COUNT(CASE WHEN quantity IS NULL THEN 1 END) 
+    AS quantity_null,
+    COUNT(CASE WHEN price_per_unit IS NULL THEN 1 END) 
+    AS price_per_unit_null,
+    COUNT(CASE WHEN total_spent IS NULL THEN 1 END) 
+    AS total_spent_null,
+    COUNT(CASE WHEN payment_method IS NULL THEN 1 END)
+    AS payment_method_null,
+    COUNT(CASE WHEN location IS NULL THEN 1 END)
+    AS location_null,
+    COUNT(CASE WHEN transaction_date IS NULL THEN 1 END)
+    AS transaction_date_null
+FROM staging.cafe_tipada;
+
