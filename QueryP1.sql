@@ -186,3 +186,142 @@ SELECT
     AS transaction_date_null
 FROM staging.cafe_tipada;
 
+
+-- 7 --------
+-- Crie a tabela staging.cardapio com as colunas item (VARCHAR(20), chave primária), price
+-- (NUMERIC(6,2) NOT NULL) e category (VARCHAR(10) NOT NULL) e insira nela as oito linhas
+-- da Tabela 3.
+
+DROP TABLE IF EXISTS staging.cardapio CASCADE;
+
+CREATE TABLE staging.cardapio(
+    item VARCHAR(20) PRIMARY KEY,
+    price NUMERIC(6,2) NOT NULL,
+    category VARCHAR(10) NOT NULL
+)
+
+INSERT INTO staging.cardapio
+    (item, price, category)
+    VALUES
+    ('COOKIE', 1.00, 'Comida'), ('TEA', 1.50, 'Bebida'), ('COFFEE', 2.00, 'Bebida'), 
+    ('CAKE', 3.00, 'Comida'), ('JUICE', 3.00, 'Bebida'), ('SANDWICH', 4.00, 'Comida'), 
+    ('SMOOTHIE', 4.00, 'Bebida'), ('SALAD', 5.00, 'Comida');
+
+    -- 8 --
+-- Aplique à tabela staging.cafe_tipada as regras da Tabela 7, na ordem indicada, com
+-- um UPDATE por regra (a R6 pode usar dois). Use subconsultas sobre staging.cardapio
+-- nas regras R1 e R5. Abaixo de cada UPDATE, registre em comentário a quantidade de linhas
+-- afetadas informada pelo pgAdmin.
+
+--R1--
+UPDATE staging.cafe_tipada as cafe
+SET price_per_unit = cardapio.price
+FROM staging.cardapio
+WHERE cafe.item = cardapio.item AND cafe.price_per_unit IS NULL AND cafe.item IS NOT NULL;
+-- 479 LINHAS ALTERADAS.
+
+--R2
+UPDATE staging.cafe_tipada
+SET price_per_unit = total_spent / quantity
+WHERE price_per_unit IS NULL AND total_spent IS NOT NULL AND quantity IS NOT NULL AND quantity <> 0;
+-- 48 LINHAS ALTERADAS.
+
+--R3
+UPDATE staging.cafe_tipada
+SET quantity = ROUND(total_spent / price_per_unit)
+WHERE quantity IS NULL AND price_per_unit IS NOT NULL AND total_spent IS NOT NULL;
+-- 456 LINHAS ALTERADAS.
+
+--R4
+UPDATE staging.cafe_tipada
+SET total_spent = quantity * price_per_unit
+WHERE total_spent IS NULL AND quantity IS NOT NULL AND price_per_unit IS NOT NULL;
+-- 479 LINHAS ALTERADAS.
+
+--R5
+UPDATE staging.cafe_tipada AS cafe
+SET item = cardapio_temp.item
+FROM (
+    SELECT price, MIN(item) AS item
+    FROM staging.cardapio
+    GROUP BY price
+    HAVING COUNT(*) = 1
+) AS cardapio_temp
+WHERE cafe.price_per_unit = cardapio_temp.price
+  AND cafe.item IS NULL;
+-- 489 LINHAS ALTERADAS.
+
+--R6
+UPDATE staging.cafe_tipada
+SET payment_method = 'UNKNOWN'
+WHERE payment_method IS NULL;
+UPDATE staging.cafe_tipada
+SET location = 'UNKNOWN'
+WHERE location IS NULL;
+
+-- 3178 LINHAS ALTERADAS.
+-- 3961 LINHAS ALTERADAS.
+-- -- TOTAL DE LINHAS ALTERADAS PELA R6: 7139
+
+
+-- ENUNCIADO 9 -----------------
+-- Crie staging.cafe_sales com as mesmas colunas e tipos da Tabela 6, agora com NOT NULL
+-- em todas elas e com as restrições CHECK (quantity > 0) e CHECK (price_per_unit > 0).
+-- Carregue-a, precedida de TRUNCATE, apenas com as linhas de staging.cafe_tipada que
+-- não têm nenhum valor nulo. Escreva então uma consulta que devolva, em uma única linha,
+-- três colunas: linhas_tipada, linhas_limpas e descartadas. Registre os três números em
+-- comentário.
+
+DROP TABLE if EXISTS staging.cafe_sales;
+CREATE TABLE staging.cafe_sales (
+    transaction_id   VARCHAR(20) NOT NULL,
+    item             TEXT NOT NULL,
+    quantity         INTEGER NOT NULL CHECK (quantity > 0),
+    price_per_unit   NUMERIC NOT NULL CHECK (price_per_unit > 0),
+    total_spent      NUMERIC NOT NULL,
+    payment_method   TEXT NOT NULL,
+    location         TEXT NOT NULL,
+    transaction_date DATE NOT NULL
+);
+
+TRUNCATE TABLE staging.cafe_sales;
+
+INSERT INTO staging.cafe_sales (
+    transaction_id,
+    item,
+    quantity,
+    price_per_unit,
+    total_spent,
+    payment_method,
+    location,
+    transaction_date
+)
+SELECT 
+    transaction_id,
+    item,
+    quantity,
+    price_per_unit,
+    total_spent,
+    payment_method,
+    location,
+    transaction_date
+FROM staging.cafe_tipada
+WHERE transaction_id IS NOT NULL
+  AND item IS NOT NULL
+  AND quantity IS NOT NULL
+  AND price_per_unit IS NOT NULL
+  AND total_spent IS NOT NULL
+  AND payment_method IS NOT NULL
+  AND location IS NOT NULL
+  AND transaction_date IS NOT NULL;
+
+SELECT 
+(SELECT COUNT(*) FROM staging.cafe_tipada) AS linhas_tipada,
+(SELECT COUNT(*) FROM staging.cafe_sales)  AS linhas_limpas,
+(SELECT COUNT(*) AS descartadas
+FROM staging.cafe_tipada
+WHERE transaction_id NOT IN (
+    SELECT transaction_id 
+    FROM staging.cafe_sales)
+);
+
