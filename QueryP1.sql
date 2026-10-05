@@ -563,3 +563,46 @@ BEGIN
  END $$
 
 
+-- -- 14 ---------------
+-- Mostre, para cada mês, o nome do mês, a quantidade de vendas, a receita e o ticket médio
+-- (arredondado para duas casas), em ordem cronológica.
+
+SELECT
+  d.month_name,
+  COUNT(*) AS qnt_vendas,
+  SUM(total_spent) AS receita,
+  ROUND(AVG(total_spent),2) AS ticket_medio
+FROM dw.fact_sales f
+JOIN dw.dim_date d ON d.date_sk = f.date_sk
+GROUP BY d.month, d.month_name
+ORDER BY d.month
+
+-- 15 ---------------
+-- Mostre o ranking de itens: categoria, item, total de unidades vendidas e receita, da maior
+-- para a menor receita.
+
+SELECT
+    i.item,
+    SUM(f.quantity) AS qnt_vendas,
+    SUM(total_spent) as receita,
+    i.category AS categoria
+
+FROM dw.fact_sales f
+JOIN dw.dim_item i ON i.item_sk = f.item_sk
+GROUP BY f.item_sk,i.category,i.item
+ORDER BY receita DESC;
+
+-- -- 16 ----------
+-- Mostre, para cada dia da semana, se ele é fim de semana, a quantidade de vendas e a receita,
+-- da maior para a menor receita.
+
+SELECT 
+    d.day_of_week AS dia_de_semana,
+    d.is_weekend AS fim_de_semana,
+    COUNT(*) AS vendas,
+    SUM(f.total_spent) AS receita
+
+FROM dw.fact_sales f
+JOIN dw.dim_date d ON f.date_sk = d.date_sk
+GROUP BY d.day_of_week, d.is_weekend
+ORDER BY receita DESC;
