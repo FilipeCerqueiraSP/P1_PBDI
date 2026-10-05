@@ -485,4 +485,81 @@ FROM
     (SELECT COUNT(*) AS qtd_fato, SUM(total_spent) AS total_fato_f FROM dw.fact_sales) fato;
 
 
--- 13 ---------------
+-- -- 13 ---------------
+-- Escreva um bloco anônimo PL/pgSQL (DO), sem criar função nem procedimento, que produza
+-- um ranking de receita para cada uma das três dimensões pequenas do DW: item, payment e
+-- location, nessa ordem, em uma única execução. Requisitos obrigatórios:
+-- a) deve existir um único cursor, não vinculado: declarado como REFCURSOR, sem consulta
+-- no DECLARE;
+-- b) o bloco percorre os nomes das três dimensões com um laço, à escolha do grupo, e, a cada
+-- volta, guarda o nome da dimensão da vez em uma variável;
+-- c) a cada volta, a consulta é dinâmica: um texto montado por concatenação com essa
+-- variável, que junta dw.fact_sales à tabela dw.dim_dimensão e devolve, para cada valor
+-- do atributo de mesmo nome, a quantidade de vendas e a receita (soma de total_spent),
+-- da maior para a menor receita;
+-- d) a cada volta, o cursor é aberto com OPEN ... FOR EXECUTE, percorrido com FETCH em um
+-- LOOP, com saída por EXIT WHEN NOT FOUND, e fechado com CLOSE antes de ser reaberto
+-- com a consulta da dimensão seguinte;
+-- e) antes de percorrer as dimensões, o bloco calcula a receita total da fato; a cada
+-- linha lida, emite um RAISE NOTICE no formato <dimensão> | <posição> - <valor>:
+-- <vendas> vendas, receita <receita> (<percentual>% do total), com o percentual
+-- arredondado para duas casas;
+-- f) ao terminar cada dimensão, emite um RAISE NOTICE com a quantidade de linhas lidas
+-- naquela dimensão; ao terminar as três, emite um último com o total de linhas lidas.
+-- Para cada dimensão, a soma dos percentuais exibidos deve ser 100%, com diferença apenas
+-- de arredondamento.
+DO $$
+DECLARE
+    cu REFCURSOR;
+    
+    dimencoes TEXT[] :=ARRAY['item', 'payment', 'location'];
+    dimencao TEXT;
+    output_sql TEXT;
+    nome TEXT;
+    vendas INT;
+    receita NUMERIC;
+    porcento NUMERIC;
+    total NUMERIC;
+    cont_dimencao INT;
+    cont_linhas INT := 0;
+BEGIN
+    SELECT SUM(total_spent) INTO total FROM dw.fact_sales;
+
+    FOREACH dimencao IN ARRAY dimencoes
+    LOOP
+        cont_dimencao :=0;
+        RAISE NOTICE '-------------RANKING DA DIMENSÃO: %', dimencao;
+        
+        output_sql := 'SELECT d.' || dimencao || ', COUNT(*) AS vendas, SUM(f.total_spent) AS receita ' ||
+                     'FROM dw.fact_sales f ' ||
+                     'JOIN dw.dim_' || dimencao || ' d ON d.' || dimencao || '_sk = f.' || dimencao || '_sk ' ||
+                     'GROUP BY d.' || dimencao || ' ' ||
+                     'ORDER BY receita DESC';
+
+        OPEN cu FOR EXECUTE output_sql;
+        LOOP
+            FETCH cu INTO nome, vendas, receita;
+            EXIT WHEN NOT FOUND;
+            cont_dimencao :=cont_dimencao + 1;
+            cont_linhas :=cont_linhas + 1;
+            
+            IF total > 0 THEN
+                porcento := ROUND((receita / total) * 100, 2);
+            ELSE
+                porcento := 0;
+            END IF;
+            
+            RAISE NOTICE '% - % - % - % vendas, parcial: % (% %% do total)', 
+                         cont_dimencao, dimencao, nome, vendas, receita, porcento;
+        END LOOP;
+        
+        CLOSE cu;
+        
+        RAISE NOTICE 'Total de linhas lidas em %: %', dimencao, cont_dimencao;
+        RAISE NOTICE '  ';
+    END LOOP;
+
+    RAISE NOTICE 'Total de linhas lidas em todas as dimensões: %', cont_linhas;
+ END $$
+
+
