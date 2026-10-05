@@ -606,3 +606,83 @@ FROM dw.fact_sales f
 JOIN dw.dim_date d ON f.date_sk = d.date_sk
 GROUP BY d.day_of_week, d.is_weekend
 ORDER BY receita DESC;
+
+-- 17 -----------------
+-- Slice. Fixe o quarto trimestre e mostre a receita por item nesse trimestre.
+
+SELECT
+    d.quarter as trimestre,
+    i.item,
+    SUM(total_spent) as receita
+    
+FROM dw.fact_sales f
+JOIN dw.dim_item i ON i.item_sk = f.item_sk
+JOIN dw.dim_date d ON f.date_sk = d.date_sk
+WHERE d.quarter = 4
+GROUP BY d.quarter,i.item
+ORDER BY receita DESC
+
+-- 18 ------------------
+-- Dice. Restrinja o cubo à categoria 'Bebida', às formas de pagamento 'Cash' e 'Digital
+-- Wallet' e aosmeses de janeiro a junho. Mostre a receita por item e forma de pagamento
+--nesse recorte.
+
+SELECT
+    i.category as categoria,
+    i.item as item,
+    d.month_name as mes,
+    p.payment as pagamento,
+    SUM(total_spent) as receita
+    
+FROM dw.fact_sales f
+JOIN dw.dim_item i ON i.item_sk = f.item_sk
+JOIN dw.dim_date d ON f.date_sk = d.date_sk
+JOIN dw.dim_payment p ON f.payment_sk = p.payment_sk
+WHERE i.category = 'Bebida' AND (p.payment = 'CASH' OR p.payment = 'DIGITAL WALLET')
+AND d.month <7
+GROUP BY p.payment,i.item, i.category, d.month_name,d.month
+ORDER BY d.month ASC
+
+-- -- 19 --------------
+-- Roll-up. Usando ROLLUP (category, item), mostre a receita por item, os subtotais por
+-- categoria e o total geral, exibindo 'TODAS' e 'TODOS' (com COALESCE) no lugar dos NULL das
+-- linhas de subtotal. Explique em comentário o que representa cada tipo de linha do resultado.
+
+SELECT
+    COALESCE(i.category, 'TODAS') as categoria,
+    COALESCE(i.item, 'TODOS') as item,
+    SUM(f.total_spent) as receita
+    
+FROM dw.fact_sales f
+JOIN dw.dim_item i ON i.item_sk = f.item_sk
+GROUP BY ROLLUP (i.category, i.item)
+ORDER BY receita
+--As primeiras linhas, que são a maioria... agrupam a raceita por item, contendo uma linha
+--para cada item, quando todos os itens já foram listados, é realizado o ROLLUP, que agrupa
+--a receita por categoria, como não é possível listar os itens agora... o coalesce substitui
+-- o resultado nulo para "TODOS". E agora temos uma linha para cada categoria, com a receita
+--agrupada por categoria. Depois de listar todas as categorias, o ROLLUP agrupa pra cima,
+-- nesse caso, no total geral. Como não é mais possível buscar e mostrar as categorias em
+--uma só linha, ele mostraria null, o coalesce preeche com "todas", então no geral, temos as
+--linhas TODOS e TODAS, onde estariam itens e categorias. 
+
+------------------------------------------------------------------------------------------------
+-- 20 ----------
+-- Cubo. Usando CUBE (location, payment), mostre a receita para todas as combinações
+-- de local e forma de pagamento, com os rótulos 'TODOS' nas linhas de subtotal. Registre em
+-- comentário quantas linhas o resultado tem e justifique esse número a partir da quantidade
+-- de valores de cada dimensão.
+SELECT
+    COALESCE(l.location, 'TODAS') AS local,
+    COALESCE(p.payment, 'TODOS') AS pagamento,
+    SUM(f.total_spent) AS receita
+
+FROM dw.fact_sales f
+JOIN dw.dim_location l ON l.location_sk = f.location_sk
+JOIN dw.dim_payment p ON p.payment_sk = f.payment_sk
+GROUP BY CUBE (l.location, p.payment)
+ORDER BY receita
+--O resultado gera 20 linhas, 20 combinações possíveis para o que foi buscado,
+--por exemplo: multiplica 5 metodos de pagamento(cartão,cash,d-wallet,unknown,todos)
+--Por 4 locais (in-store,takeaway,unknown e todos)
+--5x4=20
